@@ -1,7 +1,15 @@
+
 # ==========================================
-# IGNORE BACKEND (not ready to upload yet)
+# BACKEND - Ignore heavy/secret files
 # ==========================================
-backend/
+
+# Ignoring couple more files on Backend side
+backend/venv/
+backend/env/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.env
 
 # ==========================================
 # FRONTEND - Ignore heavy/secret files
