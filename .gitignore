@@ -1,0 +1,45 @@
+# ==========================================
+# IGNORE BACKEND (not ready to upload yet)
+# ==========================================
+backend/
+
+# ==========================================
+# FRONTEND - Ignore heavy/secret files
+# ==========================================
+
+# Node.js dependencies (HUGE - don't upload!)
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# Python venv in frontend (if it exists - shouldn't be there)
+frontend/.venv/
+frontend/venv/
+
+# Environment files (secrets)
+frontend/.env
+frontend/.env.local
+
+# ==========================================
+# GENERAL IGNORES
+# ==========================================
+
+# Environment files anywhere
+.env
+**/.env
+
+# System files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+```
