@@ -143,7 +143,7 @@ function Dashboard() {
       )}
 
       {/* Sidebar */}
-      <aside className={`w-[280px] bg-white border-r border-gray-200 flex flex-col fixed h-full z-50 transition-transform duration-300 ${
+      <aside className={`w-[215px] bg-white border-r border-gray-200 flex flex-col fixed h-full z-50 transition-transform duration-300 ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         {/* Logo Section */}
@@ -337,7 +337,7 @@ function Dashboard() {
 </aside>  {/* ✅ KEEP THIS - Closes the sidebar */}
 
       {/* Main Content */}
-      <main className="lg:ml-[280px] flex-1 overflow-auto w-full">
+      <main className="lg:ml-[185px] flex-1 overflow-auto w-full">
         {/* Top Bar */}
         <div className="bg-white border-b border-gray-200 px-4 lg:px-10 py-4 lg:py-5 sticky top-0 z-40">
           <div className="flex justify-between items-center">
@@ -441,7 +441,7 @@ function Dashboard() {
           </div>
 
           {/* Content Grid - Responsive: Stack on mobile, side-by-side on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
             {/* Recent Issues Table */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
@@ -470,8 +470,10 @@ function Dashboard() {
                       <th className="w-1"></th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Issue</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Equipment</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned To</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created By</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created At</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
@@ -500,9 +502,18 @@ function Dashboard() {
                             <div className="font-semibold text-gray-900 text-sm mb-1">{issue.title}</div>
                             <div className="text-sm text-gray-600">{issue.location || 'No location'}</div>
                           </td>
-                          <td className="px-6 py-5 text-sm text-gray-700">{issue.id.slice(0, 8)}</td>
+                          <td className="px-6 py-5 text-sm text-gray-700">{issue.description}</td>
                           <td className="px-6 py-5 text-sm text-gray-700">
-                            {issue.assigned_to_id ? 'Assigned User' : 'Unassigned'}
+                            {issue.assigned_to_id || 'Not Specified'}
+                          </td>
+                          <td className="px-6 py-5 text-sm text-gray-700">
+                            {issue.created_by_id || 'Not Specified' }
+                          </td>
+                          <td className="px-6 py-5 text-sm text-gray-700">
+                            {new Date(issue.created_at).toLocaleString('en-GB', {
+                            dateStyle: 'short',
+                            timeStyle: 'medium'
+                            })}
                           </td>
                           <td className="px-6 py-5">
                             <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-semibold ${
