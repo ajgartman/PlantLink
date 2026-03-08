@@ -17,6 +17,12 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
+class MinUserResponse(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+
+
 class Config:
     from_attributes = True
 
@@ -28,3 +34,6 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    full_name: str
+    email: str
+    role: str

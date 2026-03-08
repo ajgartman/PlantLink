@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from typing import List
 from app.database import get_db
 from app.models.issue import Issue
@@ -40,7 +40,7 @@ def create_issue(
 @router.get("/", response_model=List[IssueResponse])
 def get_issues(db: Session = Depends(get_db)):
     """Get all issues"""
-    issues = db.query(Issue).all()
+    issues = db.query(Issue).join(User, Issue.created_by).join(aliased(User), Issue.assigned_to).all()
     return issues
 
 

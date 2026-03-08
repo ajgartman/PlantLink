@@ -25,6 +25,11 @@ function Login() {
     try {
       const data = await authAPI.login(email, password);
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user',JSON.stringify({
+          full_name: data.full_name,
+          email: data.email,
+          role: data.role,
+          }));
       console.log('Login successful!', data);
       // TODO: Navigate to dashboard
       navigate('/dashboard');

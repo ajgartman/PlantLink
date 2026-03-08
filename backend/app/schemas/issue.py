@@ -3,6 +3,8 @@ from datetime import datetime
 from uuid import UUID
 from typing import Optional
 
+from app.schemas.user import MinUserResponse
+
 
 class IssueCreate(BaseModel):
     title: str
@@ -33,8 +35,10 @@ class IssueResponse(BaseModel):
     priority: str
     location: Optional[str]
     project_id: UUID
-    created_by_id: UUID
-    assigned_to_id: Optional[UUID]
+    # created_by_id: UUID
+    # assigned_to_id: Optional[UUID]
+    assigned_to: Optional[MinUserResponse]
+    created_by: MinUserResponse
     due_date: Optional[datetime]
     resolved_at: Optional[datetime]
     created_at: datetime
