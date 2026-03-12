@@ -51,5 +51,4 @@ class Issue(Base):
     project = relationship("Project")
     created_by = relationship("User", foreign_keys=[created_by_id])
     assigned_to = relationship("User", foreign_keys=[assigned_to_id])
-    # comments = relationship("Comment", back_populates="issue")
-    # attachments = relationship("Attachment", back_populates="issue")
+    comments = relationship("Comment", back_populates="issue", cascade="all, delete-orphan")

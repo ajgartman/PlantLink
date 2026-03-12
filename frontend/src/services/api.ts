@@ -92,4 +92,22 @@ export const issuesAPI = {
   },
 };
 
-export default api;
+export const commentsAPI = {
+
+  getComments: async (issueId: string) => {
+    const response = await api.get(`/issues/${issueId}/comments`);
+    return response.data;
+  },
+
+  createComment: async (issueId: string, content: string) => {
+    const token = localStorage.getItem('token');
+    const response = await api.post(
+      `/issues/${issueId}/comments`,
+      { content },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+  },
+
+};
+

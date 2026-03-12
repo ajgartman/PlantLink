@@ -1,6 +1,6 @@
 from fastapi import FastAPI  # Import FastAPI framework
 from fastapi.middleware.cors import CORSMiddleware  # Import CORS (security)
-from app.routers import auth, companies, projects, issues, users
+from app.routers import auth, companies, projects, issues, users, comments
 
 
 # API Framework
@@ -23,6 +23,8 @@ app.include_router(companies.router)
 app.include_router(projects.router)
 app.include_router(issues.router)
 app.include_router(users.router)
+
+app.include_router(comments.router)
 
 @app.get("/")  # Create endpoint at "/"
 def read_root():  # This function runs when someone visits "/"
