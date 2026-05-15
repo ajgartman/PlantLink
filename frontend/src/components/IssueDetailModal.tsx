@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { commentsAPI } from '../services/api';
+import { commentsAPI, issuesAPI } from '../services/api';
 
 interface IssueAuthor {
   full_name: string;
@@ -38,6 +38,7 @@ interface Comment {
 interface IssueDetailModalProps {
   issue: Issue;
   onClose: () => void;
+  onStatusUpdate: (issueId: string, newStatus: string) => void;
 }
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -73,7 +74,7 @@ function fmtTime(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-export default function IssueDetailModal({ issue, onClose }: IssueDetailModalProps) {
+export default function IssueDetailModal({ issue, onClose, onStatusUpdate }: IssueDetailModalProps) {
   const { isDark } = useTheme();
 
   const [comments, setComments]             = useState<Comment[]>([]);
@@ -81,6 +82,10 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
   const [sending, setSending]               = useState(false);
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentError, setCommentError]     = useState('');
+  const [status, setStatus] = useState(issue.status);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+
 
   const chatEndRef  = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -116,6 +121,21 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  const handleStatusChange = async (newStatus: string) => {
+  if (newStatus === status || updatingStatus) return;
+  setUpdatingStatus(true);
+  try {
+    await issuesAPI.updateIssue(issue.id, { status: newStatus });
+    setStatus(newStatus);
+    onStatusUpdate(issue.id, newStatus);
+  } catch (err) {
+    console.error('Failed to update status:', err);
+  } finally {
+    setUpdatingStatus(false);
+  }
+};
+
 
   const handleSend = async () => {
     const trimmed = newComment.trim();
@@ -240,10 +260,10 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
         </div>
 
         {/* Body */}
-        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        <div className="flex flex-row flex-1 overflow-hidden">
 
           {/* Left panel — issue details */}
-          <div className={`flex-1 overflow-y-auto p-6 ${isDark ? '' : 'bg-white'}`}>
+          <div className={`flex-1 overflow-y-auto p-5 min-w-0 ${isDark ? '' : 'bg-white'}`}>
 
             {/* Meta grid */}
             <div className={`grid grid-cols-2 gap-3 p-4 rounded-xl border mb-5 ${t.metaGrid}`}>
@@ -264,6 +284,37 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
               ))}
             </div>
 
+            {/* Status selector */}
+          <div className="mb-5">
+            <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
+              Update Status
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'new',         label: 'New',         color: 'border-slate-500/30 text-slate-400 hover:bg-slate-500/10' },
+                { value: 'assigned',    label: 'Assigned',    color: 'border-amber-500/30 text-amber-500 hover:bg-amber-500/10' },
+                { value: 'in_progress', label: 'In Progress', color: 'border-cyan-500/30 text-cyan-500 hover:bg-cyan-500/10' },
+                { value: 'resolved',    label: 'Resolved',    color: 'border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10' },
+                { value: 'closed',      label: 'Closed',      color: 'border-slate-600/30 text-slate-500 hover:bg-slate-600/10' },
+              ].map((option) => {
+                const isActive = status === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleStatusChange(option.value)}
+                    disabled={updatingStatus}
+                    className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${option.color} ${
+                      isActive
+                        ? 'opacity-100 ring-2 ring-offset-1 ' + (isDark ? 'ring-offset-[#0d1420]' : 'ring-offset-white') + ' ring-current'
+                        : 'opacity-50 hover:opacity-100'
+                    } disabled:cursor-not-allowed`}
+                  >
+                    {updatingStatus && isActive ? 'Saving…' : option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
             {/* Description */}
             <div className="mb-5">
               <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
@@ -288,9 +339,7 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
           </div>
 
           {/* Right panel — comments */}
-          <div className={`lg:w-[360px] flex flex-col border-t lg:border-t-0 lg:border-l ${t.panelRight} ${t.chatBg}`}>
-
-            {/* Chat header */}
+          <div className={`w-[320px] flex-shrink-0 flex flex-col border-l ${t.panelRight} ${t.chatBg}`}>            {/* Chat header */}
             <div className={`px-5 py-4 border-b flex-shrink-0 ${t.chatHeader}`}>
               <div className="flex items-center justify-between">
                 <h3 className={`text-sm font-semibold ${t.chatTitle}`} style={{ fontFamily: "'Sora', sans-serif" }}>
@@ -356,7 +405,7 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
               <div ref={chatEndRef}></div>
             </div>
 
-            {/* Input */}
+           {/* Input */}
             <div className={`p-4 border-t flex-shrink-0 ${t.inputBorder}`}>
               {commentError && (
                 <p className="text-xs text-red-400 mb-2">{commentError}</p>
@@ -375,8 +424,7 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
                 <button
                   onClick={handleSend}
                   disabled={!newComment.trim() || sending}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${t.sendBtn}`}
-                >
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${t.sendBtn}`}>
                   {sending ? 'Sending…' : 'Send'}
                 </button>
               </div>
@@ -384,6 +432,17 @@ export default function IssueDetailModal({ issue, onClose }: IssueDetailModalPro
 
           </div>
         </div>
+
+        {/* Close button — bottom left */}
+        <div className={`px-5 py-3 flex justify-start border-t flex-shrink-0 ${t.header}`}>
+          <button
+            onClick={onClose}
+            className={`px-5 py-2 rounded-xl text-xs font-semibold transition-all ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+          >
+            Close
+          </button>
+        </div>
+
       </div>
     </div>
   );

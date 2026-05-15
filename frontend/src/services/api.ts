@@ -1,6 +1,4 @@
-
 import axios from 'axios';
-
 const API_BASE_URL = 'http://localhost:8000';
 
 // Create axios instance with default config
@@ -79,7 +77,6 @@ export const issuesAPI = {
     return response.data;
   },
 
-  // 🆕 Add this:
   createIssue: async (issueData: {
     title: string;
     description?: string;
@@ -90,6 +87,17 @@ export const issuesAPI = {
     const response = await api.post('/issues/', issueData);
     return response.data;
   },
+
+  updateIssue: async (issueId: string, data: Record<string, any>) => {
+    const token = localStorage.getItem('token');
+    const response = await api.put(
+      `/issues/${issueId}`,
+      data,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+  },
+
 };
 
 export const commentsAPI = {
@@ -111,3 +119,9 @@ export const commentsAPI = {
 
 };
 
+export const projectsAPI = {
+  getAllProjects: async () => {
+    const response = await api.get('/projects/');
+    return response.data;
+  },
+};

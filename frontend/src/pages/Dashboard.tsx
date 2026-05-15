@@ -16,6 +16,7 @@ import { issuesAPI } from '../services/api';
 import type { User } from '../types/user';
 import { useTheme } from '../contexts/ThemeContext';
 import IssueDetailModal from '../components/IssueDetailModal';
+import NewIssueModal from '../components/NewIssueModal';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
+  const [showNewIssueModal, setShowNewIssueModal] = useState(false);
 
 
   useEffect(() => {
@@ -67,8 +69,21 @@ function Dashboard() {
   };
 
   const handleNewIssue = () => {
-    console.log('Create new issue clicked');
+  setShowNewIssueModal(true);
   };
+
+  const handleIssueCreated = (newIssue: any) => {
+  // 🎓 Prepend so the newest issue appears at the top of the table
+  setIssues((prev) => [newIssue, ...prev]);
+  };
+
+  const handleIssueStatusUpdate = (issueId: string, newStatus: string) => {
+  setIssues((prev) =>
+    prev.map((issue) =>
+      issue.id === issueId ? { ...issue, status: newStatus } : issue
+    )
+  );
+};
 
   // ── Priority & Status config (same for both themes — colours are semantic) ──
   const priorityConfig: Record<string, { color: string; bg: string; bar: string; dot: string }> = {
@@ -740,10 +755,17 @@ function Dashboard() {
           </div>
         </div>
         {selectedIssue && (
-          <IssueDetailModal
-            issue={selectedIssue}
-            onClose={() => setSelectedIssue(null)}
-          />
+        <IssueDetailModal
+          issue={selectedIssue}
+          onClose={() => setSelectedIssue(null)}
+          onStatusUpdate={handleIssueStatusUpdate}
+        />
+      )}
+        {showNewIssueModal && (
+        <NewIssueModal
+        onClose={() => setShowNewIssueModal(false)}
+        onIssueCreated={handleIssueCreated}
+        />
         )}
       </main>
     </div>
