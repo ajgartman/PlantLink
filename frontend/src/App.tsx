@@ -3,22 +3,51 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ThemeProvider } from './contexts/ThemeContext'
+import Layout from './components/Layout';
+import Contractors from './pages/Contractors';
+import Projects from './pages/Projects';
+
+function PlaceholderPage({ title }: { title: string }) {
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+        {title}
+      </h1>
+      <p className="text-sm text-slate-500 mt-2">Coming soon.</p>
+    </div>
+  );
+}
 
 function App() {
   return (
       <ThemeProvider>
     <Routes>
+      {/* Public routes — no layout, no auth */}
       <Route path="/login" element={<Login />} />
+
+      {/* Protected routes — wrapped in auth + shared layout */}
       <Route
-        path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Layout />
           </ProtectedRoute>
         }
-      />
-      <Route path="/" element={<Navigate to="/login" replace />} />
-    </Routes>
+      >
+        <Route path="/dashboard"   element={<Dashboard />} />
+        {/* Placeholder pages — we'll fill these in next */}
+        <Route path="/contractors" element={<Contractors />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/issues"      element={<PlaceholderPage title="Issues" />} />
+        <Route path="/plant-map"   element={<PlaceholderPage title="Plant Map" />} />
+        <Route path="/reports"     element={<PlaceholderPage title="Reports" />} />
+        <Route path="/files"       element={<PlaceholderPage title="Files" />} />
+        <Route path="/chat"        element={<PlaceholderPage title="Chat" />} />
+        <Route path="/settings"    element={<PlaceholderPage title="Settings" />} />
+      </Route>
+
+      {/* Catch-all — anything else → login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
       </ThemeProvider>
   )
 }

@@ -124,4 +124,37 @@ export const projectsAPI = {
     const response = await api.get('/projects/');
     return response.data;
   },
+
+  // 🆕 ADD THIS:
+  createProject: async (projectData: {
+    name: string;
+    description?: string;
+    plant_id: string;
+    contractor_id: string;
+    start_date?: string;
+    end_date?: string;
+  }) => {
+    const response = await api.post('/projects/', projectData);
+    return response.data;
+  },
+};
+
+export const companiesAPI = {
+  // GET /companies/ — returns all companies; we'll filter client-side for now
+  getAllCompanies: async () => {
+    const response = await api.get('/companies/');
+    return response.data;
+  },
+
+  // POST /companies/ — create a new company
+  createCompany: async (companyData: {
+    name: string;
+    company_type: 'plant' | 'contractor';
+    email?: string;
+    phone?: string;
+    address?: string;
+  }) => {
+    const response = await api.post('/companies/', companyData);
+    return response.data;
+  },
 };

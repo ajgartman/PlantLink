@@ -40,6 +40,7 @@ def create_issue(
 @router.get("/", response_model=List[IssueResponse])
 def get_issues(db: Session = Depends(get_db)):
     """Get all issues"""
+    print("ISSUES COUNT:", db.query(Issue).count())
     issues = db.query(Issue).join(User, Issue.created_by).join(aliased(User), Issue.assigned_to).all()
     return issues
 

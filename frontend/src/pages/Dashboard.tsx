@@ -27,9 +27,6 @@ function Dashboard() {
   const [error, setError] = useState<string>('');
   const [issues, setIssues] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('All');
-  const [activeNavItem, setActiveNavItem] = useState('Dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
   const [showNewIssueModal, setShowNewIssueModal] = useState(false);
 
@@ -60,13 +57,6 @@ function Dashboard() {
     fetchIssues();
   }, []);
 
-  const getInitials = (name: string): string =>
-    name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
 
   const handleNewIssue = () => {
   setShowNewIssueModal(true);
@@ -100,18 +90,6 @@ function Dashboard() {
     new:         { label: 'New',         color: isDark ? 'bg-slate-500/15 text-slate-400 border border-slate-500/25' : 'bg-slate-100 text-slate-600 border border-slate-300' },
     closed:      { label: 'Closed',      color: isDark ? 'bg-slate-700/40 text-slate-500 border border-slate-600/25' : 'bg-slate-200 text-slate-500 border border-slate-300' },
   };
-
-  const navItems = [
-    { id: 'Dashboard',   icon: '▦', label: 'Dashboard',   section: 'main' },
-    { id: 'Issues',      icon: '◫', label: 'Issues',       section: 'main' },
-    { id: 'Plant Map',   icon: '⬡', label: 'Plant Map',    section: 'main' },
-    { id: 'Contractors', icon: '◈', label: 'Contractors',  section: 'manage' },
-    { id: 'Equipment',   icon: '⚙', label: 'Equipment',    section: 'manage' },
-    { id: 'Reports',     icon: '⬗', label: 'Reports',      section: 'manage' },
-    { id: 'Files',       icon: '⬚', label: 'Files',        section: 'other' },
-    { id: 'Chat',        icon: '◻', label: 'Chat',         section: 'other' },
-    { id: 'Settings',    icon: '◎', label: 'Settings',     section: 'other' },
-  ];
 
   const filteredIssues = activeTab === 'All'
     ? issues
@@ -353,148 +331,9 @@ function Dashboard() {
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div
-      className={`flex h-screen overflow-hidden transition-colors duration-300 ${t.root}`}
-      style={{ fontFamily: t.fontFamily }}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Sora:wght@400;600;700&display=swap');
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${isDark ? '#1e293b' : '#e2e8f0'}; border-radius: 2px; }
-        .stat-card:hover { transform: translateY(-2px); }
-        .stat-card { transition: all 0.25s ease; }
-        .glow-cyan { box-shadow: 0 0 20px rgba(6,182,212,0.2); }
-        .badge-dot { animation: pulse-dot 2s infinite; }
-        @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-        tr.issue-row:hover td { background: ${t.rowHoverBg}; }
-        .logo-gradient { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%); }
-      `}</style>
-
-      {/* Mobile Toggle */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`lg:hidden fixed top-4 left-4 z-[60] w-10 h-10 rounded-xl border flex items-center justify-center shadow-sm transition-colors ${t.mobileToggle}`}
-      >
-        {isSidebarOpen ? '✕' : '☰'}
-      </button>
-
-      {isSidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* ─── SIDEBAR ──────────────────────────────────────────────────────── */}
-      <aside
-        className={`w-[220px] border-r flex flex-col fixed h-full z-50 transition-all duration-300 ${t.sidebar} ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-        style={{ background: t.sidebarBg }}
-      >
-        {/* Logo */}
-        <div className={`px-5 py-6 border-b ${t.logoBorder}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 flex-shrink-0">
-              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#lg1)" opacity="0.15"/>
-                <rect x="4" y="4" width="40" height="40" rx="10" stroke="url(#lg1)" strokeWidth="1.5" fill="none"/>
-                <path d="M13 24L21 32L35 16" stroke="url(#lg2)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                <defs>
-                  <linearGradient id="lg1" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#22d3ee"/><stop offset="1" stopColor="#0891b2"/>
-                  </linearGradient>
-                  <linearGradient id="lg2" x1="13" y1="16" x2="35" y2="32" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#22d3ee"/><stop offset="1" stopColor="#06b6d4"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-            <div>
-              <span className={`text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`} style={{ fontFamily: "'Sora', sans-serif" }}>
-                PlantSync
-              </span>
-              <div className={`text-[9px] tracking-widest uppercase font-medium ${t.logoSubtext}`}>
-                Issue Tracker
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 py-4 overflow-y-auto px-3 space-y-5">
-          {(['main', 'manage', 'other'] as const).map((section) => {
-            const labels: Record<string, string> = { main: 'Main', manage: 'Management', other: 'Other' };
-            const items = navItems.filter((n) => n.section === section);
-            return (
-              <div key={section}>
-                <div className={`px-3 mb-2 text-[9px] font-semibold uppercase tracking-widest ${t.navSectionLabel}`}>
-                  {labels[section]}
-                </div>
-                {items.map((item) => {
-                  const active = activeNavItem === item.id;
-                  return (
-                    <a
-                      key={item.id}
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); setActiveNavItem(item.id); setIsSidebarOpen(false); }}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5 group border-l-2 rounded-l-none ${active ? t.navActive : `border-transparent ${t.navInactive}`}`}
-                      style={active ? { background: t.navActiveBg } : {}}
-                    >
-                      <span className={`text-base w-5 text-center transition-colors ${active ? t.navIconActive : t.navIconInactive}`}>
-                        {item.icon}
-                      </span>
-                      <span>{item.label}</span>
-                      {item.id === 'Issues' && issues.length > 0 && (
-                        <span className="ml-auto text-[9px] bg-cyan-500/15 text-cyan-500 border border-cyan-500/20 rounded-full px-1.5 py-0.5 font-semibold">
-                          {issues.length}
-                        </span>
-                      )}
-                    </a>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* User profile */}
-        <div className={`p-3 border-t relative ${t.userSectionBorder}`}>
-          <div
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all ${isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-slate-100'}`}
-          >
-            <div className="w-8 h-8 rounded-lg logo-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {getInitials(user.full_name)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className={`text-sm font-semibold truncate ${t.userName}`}>{user.full_name}</div>
-              <div className={`text-[10px] capitalize ${t.userRole}`}>{user.role}</div>
-            </div>
-            <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>⋮</span>
-          </div>
-
-          {showUserMenu && (
-            <div className={`absolute bottom-full left-3 right-3 mb-2 rounded-xl shadow-2xl overflow-hidden border ${t.userMenuBg}`}>
-              <div className={`px-4 py-3 border-b ${t.userMenuDivider}`}>
-                <div className={`text-xs font-medium ${t.userMenuName}`}>{user.full_name}</div>
-                <div className={`text-[10px] mt-0.5 ${t.userMenuEmail}`}>{user.email}</div>
-                {user.company_name && (
-                  <div className={`text-[10px] mt-1 ${t.userMenuCompany}`}>⬡ {user.company_name}</div>
-                )}
-              </div>
-              <button
-                onClick={handleLogout}
-                className={`w-full px-4 py-2.5 text-left text-xs flex items-center gap-2 transition-colors ${t.signOutBtn}`}
-              >
-                <span>→</span> Sign out
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
+    <>
 
       {/* ─── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main className="lg:ml-[220px] flex-1 overflow-auto w-full">
 
         {/* Top Bar */}
         <div
@@ -767,8 +606,7 @@ function Dashboard() {
         onIssueCreated={handleIssueCreated}
         />
         )}
-      </main>
-    </div>
+      </>
   );
 }
 
