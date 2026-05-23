@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 from typing import List
 from app.database import get_db
 from app.models.project import Project
@@ -31,11 +32,25 @@ def create_project(project_data: ProjectCreate, db: Session = Depends(get_db), c
 
 
 @router.get("/", response_model=List[ProjectResponse])
-def get_projects(response: Response, skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def get_projects(
+    response: Response,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     query = db.query(Project).options(
         joinedload(Project.plant),
         joinedload(Project.contractor),
     )
+    # Data isolation: only show projects linked to the user's company
+    if current_user.company_id:
+        query = query.filter(
+            or_(
+                Project.plant_id == current_user.company_id,
+                Project.contractor_id == current_user.company_id,
+            )
+        )
     total = query.count()
     projects = query.offset(skip).limit(min(limit, 200)).all()
     response.headers["X-Total-Count"] = str(total)

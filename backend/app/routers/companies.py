@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 from app.database import get_db
 from app.models.company import Company
+from app.models.project import Project
 from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyResponse
 from app.security import get_current_user
@@ -30,8 +32,41 @@ def create_company(company_data: CompanyCreate, db: Session = Depends(get_db), c
 
 
 @router.get("/", response_model=List[CompanyResponse])
-def get_companies(response: Response, type: Optional[str] = None, skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def get_companies(
+    response: Response,
+    type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     query = db.query(Company)
+    # Data isolation: show own company + any company linked via projects
+    if current_user.company_id:
+        # Get IDs of companies linked through projects
+        linked_ids = (
+            db.query(Project.plant_id)
+            .filter(
+                or_(
+                    Project.plant_id == current_user.company_id,
+                    Project.contractor_id == current_user.company_id,
+                )
+            )
+            .union(
+                db.query(Project.contractor_id).filter(
+                    or_(
+                        Project.plant_id == current_user.company_id,
+                        Project.contractor_id == current_user.company_id,
+                    )
+                )
+            )
+        )
+        query = query.filter(
+            or_(
+                Company.id == current_user.company_id,
+                Company.id.in_(linked_ids),
+            )
+        )
     if type:
         query = query.filter(Company.company_type == type)
     total = query.count()

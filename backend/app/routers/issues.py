@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.issue import Issue
 from app.models.issue_history import IssueHistory
 from app.models.user import User
+from app.models.project import Project
 from app.schemas.issue import IssueCreate, IssueUpdate, IssueResponse
 from app.schemas.issue_history import IssueHistoryResponse
 from app.security import get_current_user
@@ -67,11 +68,20 @@ def get_issues(
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Issue).options(
+    query = db.query(Issue).join(Project, Issue.project_id == Project.id).options(
         joinedload(Issue.created_by),
         joinedload(Issue.assigned_to),
     )
+    # Data isolation: only show issues for projects linked to the user's company
+    if current_user.company_id:
+        query = query.filter(
+            or_(
+                Project.plant_id == current_user.company_id,
+                Project.contractor_id == current_user.company_id,
+            )
+        )
     if status:
         query = query.filter(Issue.status == status)
     if priority:
@@ -93,15 +103,26 @@ def get_issues(
 
 
 @router.get("/history/recent", response_model=List[IssueHistoryResponse])
-def get_recent_history(limit: int = 10, db: Session = Depends(get_db)):
-    """Get the most recent history entries across all issues."""
-    return (
+def get_recent_history(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the most recent history entries across all issues for the user's company."""
+    query = (
         db.query(IssueHistory)
+        .join(Issue, IssueHistory.issue_id == Issue.id)
+        .join(Project, Issue.project_id == Project.id)
         .options(joinedload(IssueHistory.user))
-        .order_by(IssueHistory.created_at.desc())
-        .limit(min(limit, 50))
-        .all()
     )
+    if current_user.company_id:
+        query = query.filter(
+            or_(
+                Project.plant_id == current_user.company_id,
+                Project.contractor_id == current_user.company_id,
+            )
+        )
+    return query.order_by(IssueHistory.created_at.desc()).limit(min(limit, 50)).all()
 
 
 @router.get("/{issue_id}", response_model=IssueResponse)
