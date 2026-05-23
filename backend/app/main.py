@@ -4,7 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from fastapi.staticfiles import StaticFiles
 import os
-from app.routers import auth, companies, projects, issues, users, comments, attachments
+from app.routers import auth, companies, projects, issues, users, comments, attachments, invites
 from app.limiter import limiter
 
 app = FastAPI(
@@ -32,6 +32,7 @@ app.include_router(users.router)
 
 app.include_router(comments.router)
 app.include_router(attachments.router)
+app.include_router(invites.router)
 
 # Serve uploaded files
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")

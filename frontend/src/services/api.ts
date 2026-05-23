@@ -129,6 +129,28 @@ export const attachmentsAPI = {
   },
 };
 
+export const invitesAPI = {
+  validateToken: async (token: string) => {
+    const response = await api.get(`/invites/${token}`);
+    return response.data;
+  },
+
+  acceptInvite: async (data: { token: string; password: string; full_name: string }) => {
+    const response = await api.post('/invites/accept', data);
+    return response.data;
+  },
+
+  createInvite: async (data: { email: string; role: string }) => {
+    const response = await api.post('/invites/', data);
+    return response.data;
+  },
+
+  listInvites: async () => {
+    const response = await api.get('/invites/');
+    return response.data;
+  },
+};
+
 export const commentsAPI = {
 
   getComments: async (issueId: string) => {

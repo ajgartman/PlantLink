@@ -5,3 +5,4 @@ from app.models.issue import Issue
 from app.models.comment import Comment
 from app.models.issue_history import IssueHistory
 from app.models.attachment import Attachment
+from app.models.invite import Invite

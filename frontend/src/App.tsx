@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import Contractors from './pages/Contractors';
 import Projects from './pages/Projects';
 import Onboarding from './pages/Onboarding';
+import InviteAccept from './pages/InviteAccept';
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -26,6 +27,7 @@ function App() {
       {/* Public routes — no layout, no auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Onboarding />} />
+      <Route path="/invite/:token" element={<InviteAccept />} />
 
       {/* Protected routes — wrapped in auth + shared layout */}
       <Route
