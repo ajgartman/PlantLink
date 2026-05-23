@@ -102,6 +102,11 @@ export const issuesAPI = {
     return response.data;
   },
 
+  getRecentHistory: async (limit: number = 10) => {
+    const response = await api.get('/issues/history/recent', { params: { limit } });
+    return response.data;
+  },
+
 };
 
 export const attachmentsAPI = {

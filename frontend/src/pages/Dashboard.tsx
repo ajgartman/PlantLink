@@ -32,6 +32,7 @@ function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalIssues, setTotalIssues] = useState(0);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const pageSize = 50;
 
   // Role-based UI: who can create issues
@@ -53,6 +54,7 @@ function Dashboard() {
 
   useEffect(() => {
     fetchIssues();
+    issuesAPI.getRecentHistory(8).then(setRecentActivity).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -599,28 +601,47 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* Recent Activity */}
+              {/* Recent Activity — real data from issue history */}
               <div className={`rounded-2xl border overflow-hidden ${t.sidePanelBorder}`} style={{ background: t.sidePanelBg }}>
                 <div className={`px-5 py-4 border-b ${t.sidePanelDivider}`}>
                   <h2 className={`text-sm font-semibold ${t.sidePanelTitle}`} style={{ fontFamily: "'Sora', sans-serif" }}>Recent Activity</h2>
                 </div>
                 <div className="p-4 space-y-3">
-                  {[
-                    { icon: '◫', text: 'Issue #1234 resolved',        time: '3 min ago',    color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
-                    { icon: '↑', text: 'New issue created',            time: '15 min ago',   color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-                    { icon: '◻', text: 'Mike updated issue #1238',     time: '1 hour ago',   color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-                    { icon: '↑', text: 'Comment added to #1239',       time: '3 hours ago',  color: 'bg-violet-500/10 text-violet-500 border-violet-500/20' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className={`w-7 h-7 rounded-lg border ${item.color} flex items-center justify-center flex-shrink-0 text-xs mt-0.5`}>
-                        {item.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-xs font-medium leading-snug ${t.activityText}`}>{item.text}</div>
-                        <div className={`text-[10px] mt-0.5 ${t.activityTime}`}>{item.time}</div>
-                      </div>
-                    </div>
-                  ))}
+                  {recentActivity.length === 0 ? (
+                    <p className={`text-xs text-center py-4 ${t.activityTime}`}>No recent activity</p>
+                  ) : (
+                    recentActivity.map((entry: any) => {
+                      const fieldColors: Record<string, string> = {
+                        status:         'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+                        priority:       'bg-amber-500/10 text-amber-500 border-amber-500/20',
+                        assigned_to_id: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
+                      };
+                      const fieldIcons: Record<string, string> = {
+                        status: '◫', priority: '⚡', assigned_to_id: '◈',
+                      };
+                      const color = fieldColors[entry.field_changed] || 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+                      const icon = fieldIcons[entry.field_changed] || '◻';
+                      const diff = (Date.now() - new Date(entry.created_at).getTime()) / 1000;
+                      const timeAgo = diff < 60 ? 'just now'
+                        : diff < 3600 ? `${Math.floor(diff / 60)}m ago`
+                        : diff < 86400 ? `${Math.floor(diff / 3600)}h ago`
+                        : new Date(entry.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+                      return (
+                        <div key={entry.id} className="flex items-start gap-3">
+                          <div className={`w-7 h-7 rounded-lg border ${color} flex items-center justify-center flex-shrink-0 text-xs mt-0.5`}>
+                            {icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-xs font-medium leading-snug ${t.activityText}`}>
+                              {entry.user?.full_name || 'Someone'} changed {entry.field_changed.replace('_', ' ')} to {entry.new_value}
+                            </div>
+                            <div className={`text-[10px] mt-0.5 ${t.activityTime}`}>{timeAgo}</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

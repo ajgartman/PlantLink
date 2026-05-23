@@ -92,6 +92,18 @@ def get_issues(
     return issues
 
 
+@router.get("/history/recent", response_model=List[IssueHistoryResponse])
+def get_recent_history(limit: int = 10, db: Session = Depends(get_db)):
+    """Get the most recent history entries across all issues."""
+    return (
+        db.query(IssueHistory)
+        .options(joinedload(IssueHistory.user))
+        .order_by(IssueHistory.created_at.desc())
+        .limit(min(limit, 50))
+        .all()
+    )
+
+
 @router.get("/{issue_id}", response_model=IssueResponse)
 def get_issue(issue_id: str, db: Session = Depends(get_db)):
     """Get a specific issue by ID"""
