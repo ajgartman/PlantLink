@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from typing import List, Optional
 from app.database import get_db
 from app.models.issue import Issue
 from app.models.issue_history import IssueHistory
+from app.models.user import User
 from app.schemas.issue import IssueCreate, IssueUpdate, IssueResponse
 from app.schemas.issue_history import IssueHistoryResponse
 from app.security import get_current_user
 from app.dependencies import require_role
-from app.models.user import User
+from app.email import send_email
 
 
 
@@ -19,6 +20,7 @@ router = APIRouter(prefix="/issues", tags=["Issues"])
 @router.post("/", response_model=IssueResponse, status_code=status.HTTP_201_CREATED)
 def create_issue(
         issue_data: IssueCreate,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
         current_user: User = Depends(require_role("admin", "manager", "operator")),
 ):
@@ -29,7 +31,7 @@ def create_issue(
         priority=issue_data.priority,
         location=issue_data.location,
         project_id=issue_data.project_id,
-        created_by_id=current_user.id,  # ← From JWT token!
+        created_by_id=current_user.id,
         assigned_to_id=issue_data.assigned_to_id,
         due_date=issue_data.due_date
     )
@@ -37,6 +39,21 @@ def create_issue(
     db.add(new_issue)
     db.commit()
     db.refresh(new_issue)
+
+    # Email assignee if issue is assigned on creation
+    if new_issue.assigned_to_id:
+        assignee = db.query(User).filter(User.id == new_issue.assigned_to_id).first()
+        if assignee:
+            background_tasks.add_task(
+                send_email,
+                to=assignee.email,
+                subject=f"New issue assigned: {new_issue.title}",
+                html=f"<p>Hi {assignee.full_name},</p>"
+                     f"<p>You've been assigned to a new issue: <strong>{new_issue.title}</strong></p>"
+                     f"<p>Priority: {new_issue.priority}</p>"
+                     f"<p>— PlantSync</p>",
+            )
+
     return new_issue
 
 
@@ -88,12 +105,16 @@ def get_issue(issue_id: str, db: Session = Depends(get_db)):
 def update_issue(
     issue_id: str,
     issue_data: IssueUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
+
+    old_assigned_to_id = str(issue.assigned_to_id) if issue.assigned_to_id else None
+    old_status = issue.status
 
     # Track history for key fields
     for field in ["status", "priority", "assigned_to_id"]:
@@ -130,6 +151,40 @@ def update_issue(
 
     db.commit()
     db.refresh(issue)
+
+    # Email notifications (async, won't block the response)
+    # 1. Notify new assignee when assignment changes
+    if (
+        issue_data.assigned_to_id is not None
+        and str(issue_data.assigned_to_id) != old_assigned_to_id
+    ):
+        assignee = db.query(User).filter(User.id == issue_data.assigned_to_id).first()
+        if assignee:
+            background_tasks.add_task(
+                send_email,
+                to=assignee.email,
+                subject=f"Issue assigned to you: {issue.title}",
+                html=f"<p>Hi {assignee.full_name},</p>"
+                     f"<p>You've been assigned to issue: <strong>{issue.title}</strong></p>"
+                     f"<p>— PlantSync</p>",
+            )
+
+    # 2. Notify creator when issue is resolved
+    if (
+        issue_data.status is not None
+        and issue_data.status in ("resolved", "closed")
+        and old_status not in ("resolved", "closed")
+    ):
+        creator = db.query(User).filter(User.id == issue.created_by_id).first()
+        if creator and str(creator.id) != str(current_user.id):
+            background_tasks.add_task(
+                send_email,
+                to=creator.email,
+                subject=f"Issue resolved: {issue.title}",
+                html=f"<p>Hi {creator.full_name},</p>"
+                     f"<p>Your issue <strong>{issue.title}</strong> has been marked as {issue_data.status}.</p>"
+                     f"<p>— PlantSync</p>",
+            )
 
     return issue
 

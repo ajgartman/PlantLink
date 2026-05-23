@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from uuid import UUID
 from typing import List
@@ -9,6 +9,7 @@ from app.models.comment import Comment
 from app.models.issue import Issue
 from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentResponse
+from app.email import send_email
 
 router = APIRouter(tags=["comments"])
 
@@ -43,6 +44,7 @@ def get_comments(
 def create_comment(
     issue_id: UUID,
     comment_data: CommentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -64,5 +66,20 @@ def create_comment(
 
     # Reload the user relationship so it's included in the response
     new_comment.user
+
+    # Notify issue creator about new comment (unless they wrote it)
+    if str(issue.created_by_id) != str(current_user.id):
+        creator = db.query(User).filter(User.id == issue.created_by_id).first()
+        if creator:
+            background_tasks.add_task(
+                send_email,
+                to=creator.email,
+                subject=f"New comment on: {issue.title}",
+                html=f"<p>Hi {creator.full_name},</p>"
+                     f"<p><strong>{current_user.full_name}</strong> commented on your issue "
+                     f"<strong>{issue.title}</strong>:</p>"
+                     f"<blockquote>{comment_data.content.strip()[:200]}</blockquote>"
+                     f"<p>— PlantSync</p>",
+            )
 
     return new_comment
