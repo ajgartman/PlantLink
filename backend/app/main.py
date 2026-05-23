@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from app.routers import auth, companies, projects, issues, users, comments
+from fastapi.staticfiles import StaticFiles
+import os
+from app.routers import auth, companies, projects, issues, users, comments, attachments
 from app.limiter import limiter
 
 app = FastAPI(
@@ -29,6 +31,12 @@ app.include_router(issues.router)
 app.include_router(users.router)
 
 app.include_router(comments.router)
+app.include_router(attachments.router)
+
+# Serve uploaded files
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.get("/")  # Create endpoint at "/"
 def read_root():  # This function runs when someone visits "/"

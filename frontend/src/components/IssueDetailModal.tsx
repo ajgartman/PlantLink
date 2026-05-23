@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { commentsAPI, issuesAPI, usersAPI } from '../services/api';
+import { commentsAPI, issuesAPI, usersAPI, attachmentsAPI } from '../services/api';
+
+interface AttachmentItem {
+  id: string;
+  issue_id: string;
+  filename: string;
+  url: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_by: { full_name: string; email: string } | null;
+  created_at: string;
+}
 
 interface HistoryEntry {
   id: string;
@@ -101,8 +112,11 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
   const [assignedToId, setAssignedToId] = useState(issue.assigned_to_id || '');
   const [updatingAssignee, setUpdatingAssignee] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
-
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef  = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -114,13 +128,15 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
     const load = async () => {
       try {
         setLoadingComments(true);
-        const [commentsData, historyData] = await Promise.all([
+        const [commentsData, historyData, attachmentsData] = await Promise.all([
           commentsAPI.getComments(issue.id),
           issuesAPI.getIssueHistory(issue.id),
+          attachmentsAPI.getAttachments(issue.id),
         ]);
         if (!cancelled) {
           setComments(commentsData);
           setHistory(historyData);
+          setAttachments(attachmentsData);
         }
       } catch (err) {
         console.error('Failed to load comments/history:', err);
@@ -232,6 +248,38 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setUploading(true);
+    try {
+      const newAttachment = await attachmentsAPI.uploadAttachment(issue.id, file);
+      setAttachments((prev) => [...prev, newAttachment]);
+    } catch (err: any) {
+      setUploadError(err.response?.data?.detail || 'Upload failed');
+    } finally {
+      setUploading(false);
+      // Reset the input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    try {
+      await attachmentsAPI.deleteAttachment(attachmentId);
+      setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+    } catch (err: any) {
+      console.error('Failed to delete attachment:', err);
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const t = isDark ? {
@@ -452,6 +500,100 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Attachments */}
+            <div className="mb-5">
+              <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
+                Attachments {attachments.length > 0 && `(${attachments.length})`}
+              </div>
+
+              {/* Upload area */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className={`w-full mb-3 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-all flex items-center justify-center gap-2 ${
+                  isDark
+                    ? 'border-white/[0.08] text-slate-500 hover:border-cyan-500/30 hover:text-cyan-400 hover:bg-cyan-500/5'
+                    : 'border-slate-200 text-slate-400 hover:border-cyan-400 hover:text-cyan-600 hover:bg-cyan-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {uploading ? (
+                  <>
+                    <span className="animate-spin">⟳</span> Uploading…
+                  </>
+                ) : (
+                  <>
+                    <span>📎</span> Click to attach a file (JPG, PNG, WebP, PDF — max 10 MB)
+                  </>
+                )}
+              </button>
+              {uploadError && (
+                <p className="text-xs text-red-400 mb-2">{uploadError}</p>
+              )}
+
+              {/* Attachment thumbnails */}
+              {attachments.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {attachments.map((att) => {
+                    const isImage = att.content_type.startsWith('image/');
+                    return (
+                      <div
+                        key={att.id}
+                        className={`group relative rounded-xl border overflow-hidden ${
+                          isDark ? 'border-white/[0.06] bg-white/[0.02]' : 'border-slate-200 bg-slate-50'
+                        }`}
+                      >
+                        {isImage ? (
+                          <a href={`http://localhost:8000${att.url}`} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={`http://localhost:8000${att.url}`}
+                              alt={att.filename}
+                              className="w-full h-24 object-cover"
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            href={`http://localhost:8000${att.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center h-24"
+                          >
+                            <span className="text-3xl opacity-40">📄</span>
+                          </a>
+                        )}
+                        <div className="px-2.5 py-2">
+                          <div className={`text-[10px] font-medium truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {att.filename}
+                          </div>
+                          <div className={`text-[9px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                            {formatFileSize(att.size_bytes)} · {att.uploaded_by?.full_name || 'Unknown'}
+                          </div>
+                        </div>
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeleteAttachment(att.id)}
+                          className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity ${
+                            isDark
+                              ? 'bg-red-500/20 text-red-400 hover:bg-red-500/40'
+                              : 'bg-red-100 text-red-500 hover:bg-red-200'
+                          }`}
+                          title="Delete attachment"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* History timeline */}

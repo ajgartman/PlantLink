@@ -4,3 +4,4 @@ from app.models.project import Project
 from app.models.issue import Issue
 from app.models.comment import Comment
 from app.models.issue_history import IssueHistory
+from app.models.attachment import Attachment

@@ -104,6 +104,26 @@ export const issuesAPI = {
 
 };
 
+export const attachmentsAPI = {
+  getAttachments: async (issueId: string) => {
+    const response = await api.get(`/issues/${issueId}/attachments`);
+    return response.data;
+  },
+
+  uploadAttachment: async (issueId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/issues/${issueId}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteAttachment: async (attachmentId: string) => {
+    await api.delete(`/attachments/${attachmentId}`);
+  },
+};
+
 export const commentsAPI = {
 
   getComments: async (issueId: string) => {
