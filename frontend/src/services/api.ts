@@ -72,9 +72,9 @@ export const userAPI = {
 };
 
 export const issuesAPI = {
-  getAllIssues: async () => {
-    const response = await api.get('/issues/');
-    return response.data;
+  getAllIssues: async (params?: { status?: string; priority?: string; project_id?: string; q?: string; skip?: number; limit?: number }) => {
+    const response = await api.get('/issues/', { params });
+    return { data: response.data, total: parseInt(response.headers['x-total-count'] || '0', 10) };
   },
 
   createIssue: async (issueData: {
@@ -89,12 +89,7 @@ export const issuesAPI = {
   },
 
   updateIssue: async (issueId: string, data: Record<string, any>) => {
-    const token = localStorage.getItem('token');
-    const response = await api.put(
-      `/issues/${issueId}`,
-      data,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await api.put(`/issues/${issueId}`, data);
     return response.data;
   },
 
@@ -108,12 +103,7 @@ export const commentsAPI = {
   },
 
   createComment: async (issueId: string, content: string) => {
-    const token = localStorage.getItem('token');
-    const response = await api.post(
-      `/issues/${issueId}/comments`,
-      { content },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await api.post(`/issues/${issueId}/comments`, { content });
     return response.data;
   },
 

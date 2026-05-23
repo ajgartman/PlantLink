@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, aliased
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
+from typing import List, Optional
 from app.database import get_db
 from app.models.issue import Issue
 from app.schemas.issue import IssueCreate, IssueUpdate, IssueResponse
@@ -33,15 +34,41 @@ def create_issue(
     db.add(new_issue)
     db.commit()
     db.refresh(new_issue)
-
     return new_issue
 
 
 @router.get("/", response_model=List[IssueResponse])
-def get_issues(db: Session = Depends(get_db)):
-    """Get all issues"""
-    print("ISSUES COUNT:", db.query(Issue).count())
-    issues = db.query(Issue).join(User, Issue.created_by).join(aliased(User), Issue.assigned_to).all()
+def get_issues(
+    response: Response,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    project_id: Optional[str] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    query = db.query(Issue).options(
+        joinedload(Issue.created_by),
+        joinedload(Issue.assigned_to),
+    )
+    if status:
+        query = query.filter(Issue.status == status)
+    if priority:
+        query = query.filter(Issue.priority == priority)
+    if project_id:
+        query = query.filter(Issue.project_id == project_id)
+    if q:
+        query = query.filter(
+            or_(
+                Issue.title.ilike(f"%{q}%"),
+                Issue.description.ilike(f"%{q}%"),
+                Issue.location.ilike(f"%{q}%"),
+            )
+        )
+    total = query.count()
+    issues = query.offset(skip).limit(min(limit, 200)).all()
+    response.headers["X-Total-Count"] = str(total)
     return issues
 
 

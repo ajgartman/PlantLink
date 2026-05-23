@@ -9,11 +9,11 @@ import Projects from './pages/Projects';
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
-    <div className="p-8">
+    <div className="flex flex-col items-center justify-center h-full p-8">
       <h1 className="text-2xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
         {title}
       </h1>
-      <p className="text-sm text-slate-500 mt-2">Coming soon.</p>
+      <p className="text-sm text-slate-500 mt-2">More features coming soon!</p>
     </div>
   );
 }

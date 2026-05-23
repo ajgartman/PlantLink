@@ -3,6 +3,8 @@ from datetime import datetime
 from uuid import UUID
 from typing import Optional
 
+from app.schemas.company import CompanyBrief
+
 
 class ProjectCreate(BaseModel):
     name: str
@@ -26,6 +28,8 @@ class ProjectResponse(BaseModel):
     description: Optional[str]
     plant_id: UUID
     contractor_id: UUID
+    plant: Optional[CompanyBrief] = None
+    contractor: Optional[CompanyBrief] = None
     start_date: Optional[datetime]
     end_date: Optional[datetime]
     created_at: datetime

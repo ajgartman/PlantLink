@@ -29,6 +29,10 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
   const [showNewIssueModal, setShowNewIssueModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalIssues, setTotalIssues] = useState(0);
+  const pageSize = 50;
 
 
   useEffect(() => {
@@ -41,21 +45,37 @@ function Dashboard() {
     setLoading(false);
   }, []);
 
+  const fetchIssues = async (params?: Record<string, string | number>) => {
+    try {
+      setLoading(true);
+      const result = await issuesAPI.getAllIssues(params as any);
+      setIssues(result.data);
+      setTotalIssues(result.total);
+    } catch (error) {
+      console.error('Failed to fetch issues:', error);
+      setError('Failed to load issues.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchIssues = async () => {
-      try {
-        setLoading(true);
-        const issuesData = await issuesAPI.getAllIssues();
-        setIssues(issuesData);
-      } catch (error) {
-        console.error('Failed to fetch issues:', error);
-        setError('Failed to load issues.');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchIssues();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const params: Record<string, string | number> = { skip: 0, limit: pageSize };
+      if (searchQuery.trim()) params.q = searchQuery.trim();
+      if (activeTab === 'Critical') params.priority = 'critical';
+      else if (activeTab === 'High') params.priority = 'high';
+      else if (activeTab === 'Medium') params.priority = 'medium';
+      else if (activeTab === 'In Progress') params.status = 'in_progress';
+      setCurrentPage(1);
+      await fetchIssues(params);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
 
   const handleNewIssue = () => {
@@ -71,6 +91,14 @@ function Dashboard() {
   setIssues((prev) =>
     prev.map((issue) =>
       issue.id === issueId ? { ...issue, status: newStatus } : issue
+    )
+  );
+};
+
+  const handleIssuePriorityUpdate = (issueId: string, newPriority: string) => {
+  setIssues((prev) =>
+    prev.map((issue) =>
+      issue.id === issueId ? { ...issue, priority: newPriority } : issue
     )
   );
 };
@@ -91,12 +119,29 @@ function Dashboard() {
     closed:      { label: 'Closed',      color: isDark ? 'bg-slate-700/40 text-slate-500 border border-slate-600/25' : 'bg-slate-200 text-slate-500 border border-slate-300' },
   };
 
-  const filteredIssues = activeTab === 'All'
-    ? issues
-    : issues.filter((i) => {
-        if (activeTab === 'In Progress') return i.status === 'in_progress';
-        return i.priority === activeTab.toLowerCase();
-      });
+  const handleTabChange = async (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    const params: Record<string, string | number> = { skip: 0, limit: pageSize };
+    if (tab === 'Critical') params.priority = 'critical';
+    else if (tab === 'High') params.priority = 'high';
+    else if (tab === 'Medium') params.priority = 'medium';
+    else if (tab === 'In Progress') params.status = 'in_progress';
+    await fetchIssues(params);
+  };
+
+  const handlePageChange = async (page: number) => {
+    setCurrentPage(page);
+    const skip = (page - 1) * pageSize;
+    const params: Record<string, string | number> = { skip, limit: pageSize };
+    if (activeTab === 'Critical') params.priority = 'critical';
+    else if (activeTab === 'High') params.priority = 'high';
+    else if (activeTab === 'Medium') params.priority = 'medium';
+    else if (activeTab === 'In Progress') params.status = 'in_progress';
+    await fetchIssues(params);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalIssues / pageSize));
 
   // ── 🎨 THEME TOKENS ──────────────────────────────────────────────────────────
   // This is the heart of the theme system. All visual differences live here.
@@ -355,6 +400,8 @@ function Dashboard() {
                 <input
                   type="text"
                   placeholder="Search issues, equipment..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setActiveTab('All'); }}
                   className={`w-[180px] lg:w-[280px] pl-9 pr-4 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 transition-all ${t.searchBg} ${t.searchText} ${t.searchFocus}`}
                 />
               </div>
@@ -387,14 +434,13 @@ function Dashboard() {
         </div>
 
         <div className="p-4 lg:p-8">
-
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[
-              { label: 'Active Issues',    value: issues.filter((i) => i.status !== 'resolved' && i.status !== 'closed').length || 24, change: '↓ 12% from yesterday', changeColor: 'text-emerald-500', icon: '◫', iconBg: 'from-cyan-500/20 to-cyan-600/5',    iconColor: 'text-cyan-500',    accent: isDark ? 'border-t-cyan-500/30' : 'border-t-cyan-400' },
-              { label: 'Critical Priority', value: issues.filter((i) => i.priority === 'critical').length || 5,                         change: '↑ 2 need attention', changeColor: 'text-red-500',     icon: '⚠', iconBg: 'from-red-500/20 to-red-600/5',      iconColor: 'text-red-500',     accent: isDark ? 'border-t-red-500/30' : 'border-t-red-400' },
-              { label: 'Avg Resolution',   value: '3.2 hrs',                                                                            change: '↓ 16% this month',  changeColor: 'text-emerald-500', icon: '⚡', iconBg: 'from-emerald-500/20 to-emerald-600/5', iconColor: 'text-emerald-500', accent: isDark ? 'border-t-emerald-500/30' : 'border-t-emerald-400' },
-              { label: 'Downtime Cost',    value: '$12.4k',                                                                             change: '↓ 30% below target', changeColor: 'text-emerald-500', icon: '◈', iconBg: 'from-violet-500/20 to-violet-600/5',  iconColor: 'text-violet-500',  accent: isDark ? 'border-t-violet-500/30' : 'border-t-violet-400' },
+              { label: 'Active Issues',    value: issues.filter((i) => i.status !== 'resolved' && i.status !== 'closed').length, change: null, changeColor: 'text-emerald-500', icon: '◫', iconBg: 'from-cyan-500/20 to-cyan-600/5',    iconColor: 'text-cyan-500',    accent: isDark ? 'border-t-cyan-500/30' : 'border-t-cyan-400' },
+              { label: 'Critical Priority', value: issues.filter((i) => i.priority === 'critical').length,                        change: null, changeColor: 'text-red-500',     icon: '⚠', iconBg: 'from-red-500/20 to-red-600/5',      iconColor: 'text-red-500',     accent: isDark ? 'border-t-red-500/30' : 'border-t-red-400' },
+              { label: 'Resolved',          value: issues.filter((i) => i.status === 'resolved' || i.status === 'closed').length, change: null, changeColor: 'text-emerald-500', icon: '⚡', iconBg: 'from-emerald-500/20 to-emerald-600/5', iconColor: 'text-emerald-500', accent: isDark ? 'border-t-emerald-500/30' : 'border-t-emerald-400' },
+              { label: 'Total Issues',      value: issues.length,                                                                 change: null, changeColor: 'text-emerald-500', icon: '◈', iconBg: 'from-violet-500/20 to-violet-600/5',  iconColor: 'text-violet-500',  accent: isDark ? 'border-t-violet-500/30' : 'border-t-violet-400' },
             ].map((stat, i) => (
               <div
                 key={i}
@@ -410,7 +456,9 @@ function Dashboard() {
                 <div className={`text-3xl font-bold mb-1.5 ${t.cardValue}`} style={{ fontFamily: "'Sora', sans-serif" }}>
                   {stat.value}
                 </div>
-                <div className={`text-xs font-medium ${stat.changeColor}`}>{stat.change}</div>
+                {stat.change && (
+                  <div className={`text-xs font-medium ${stat.changeColor}`}>{stat.change}</div>
+                )}
               </div>
             ))}
           </div>
@@ -434,7 +482,7 @@ function Dashboard() {
                   {['All', 'Critical', 'High', 'Medium', 'In Progress'].map((tab) => (
                     <button
                       key={tab}
-                      onClick={() => setActiveTab(tab)}
+                      onClick={() => handleTabChange(tab)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${activeTab === tab ? t.tabActive : t.tabInactive}`}
                     >
                       {tab}
@@ -454,14 +502,14 @@ function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredIssues.length === 0 ? (
+                    {issues.length === 0 ? (
                       <tr>
                         <td colSpan={8} className={`px-5 py-12 text-center text-sm ${t.emptyText}`}>
                           No issues found
                         </td>
                       </tr>
                     ) : (
-                      filteredIssues.map((issue) => {
+                      issues.map((issue) => {
                         const p = priorityConfig[issue.priority] || priorityConfig.low;
                         const s = statusConfig[issue.status] || statusConfig.new;
                         return (
@@ -504,6 +552,30 @@ function Dashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {totalPages > 1 && (
+                <div className={`px-5 py-3 border-t flex items-center justify-between ${t.tableHeaderBorder}`}>
+                  <span className={`text-xs ${t.tablePanelCount}`}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentPage <= 1 ? 'opacity-40 cursor-not-allowed' : ''} ${t.tabInactive}`}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentPage >= totalPages ? 'opacity-40 cursor-not-allowed' : ''} ${t.tabInactive}`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Sidebar */}
@@ -598,6 +670,7 @@ function Dashboard() {
           issue={selectedIssue}
           onClose={() => setSelectedIssue(null)}
           onStatusUpdate={handleIssueStatusUpdate}
+          onPriorityUpdate={handleIssuePriorityUpdate}
         />
       )}
         {showNewIssueModal && (

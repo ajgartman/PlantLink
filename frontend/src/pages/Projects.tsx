@@ -9,12 +9,20 @@ interface Company {
   company_type: 'plant' | 'contractor';
 }
 
+interface CompanyBrief {
+  id: string;
+  name: string;
+  company_type: string;
+}
+
 interface Project {
   id: string;
   name: string;
   description?: string;
   plant_id: string;
   contractor_id: string;
+  plant?: CompanyBrief;
+  contractor?: CompanyBrief;
   start_date?: string;
   end_date?: string;
   created_at: string;
@@ -29,9 +37,6 @@ export default function Projects() {
   const [error, setError] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
 
-  // 🎓 Fetch projects + companies in parallel
-  // Promise.all runs both requests at the same time instead of waiting
-  // for one to finish before starting the next. Faster page load.
   useEffect(() => {
     const load = async () => {
       try {
@@ -50,11 +55,6 @@ export default function Projects() {
     };
     load();
   }, []);
-
-  // 🎓 Helper — look up company name by ID
-  // Using a Map would be faster, but with <50 companies a .find() is fine
-  const companyName = (id: string) =>
-    companies.find((c) => c.id === id)?.name || '—';
 
   const handleProjectCreated = (newProject: Project) => {
     setProjects((prev) => [newProject, ...prev]);
@@ -152,8 +152,8 @@ export default function Projects() {
                           <div className={`text-[10px] mt-0.5 ${t.rowMuted}`}>{p.description}</div>
                         )}
                       </td>
-                      <td className={`px-5 py-4 text-xs ${t.rowText}`}>{companyName(p.plant_id)}</td>
-                      <td className={`px-5 py-4 text-xs ${t.rowText}`}>{companyName(p.contractor_id)}</td>
+                      <td className={`px-5 py-4 text-xs ${t.rowText}`}>{p.plant?.name || '—'}</td>
+                      <td className={`px-5 py-4 text-xs ${t.rowText}`}>{p.contractor?.name || '—'}</td>
                       <td className={`px-5 py-4 text-[10px] whitespace-nowrap ${t.rowMuted}`}>
                         {p.start_date ? new Date(p.start_date).toLocaleDateString('en-GB') : '—'}
                       </td>

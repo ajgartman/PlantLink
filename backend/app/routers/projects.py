@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.database import get_db
 from app.models.project import Project
+from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
+from app.security import get_current_user
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
+def create_project(project_data: ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a new project linking a contractor to a plant"""
     new_project = Project(
         name=project_data.name,
@@ -28,9 +30,14 @@ def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[ProjectResponse])
-def get_projects(db: Session = Depends(get_db)):
-    """Get all projects"""
-    projects = db.query(Project).all()
+def get_projects(response: Response, skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+    query = db.query(Project).options(
+        joinedload(Project.plant),
+        joinedload(Project.contractor),
+    )
+    total = query.count()
+    projects = query.offset(skip).limit(min(limit, 200)).all()
+    response.headers["X-Total-Count"] = str(total)
     return projects
 
 
@@ -44,7 +51,7 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
-def update_project(project_id: str, project_data: ProjectUpdate, db: Session = Depends(get_db)):
+def update_project(project_id: str, project_data: ProjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Update a project"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -67,7 +74,7 @@ def update_project(project_id: str, project_data: ProjectUpdate, db: Session = D
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: str, db: Session = Depends(get_db)):
+def delete_project(project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a project"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:

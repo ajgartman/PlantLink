@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Andrzej Gartman\\\\OneDrive\\\\Desktop\\\\plantInterface\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "Bash(pip install *)",
+      "Bash(pip freeze *)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

@@ -39,6 +39,7 @@ interface IssueDetailModalProps {
   issue: Issue;
   onClose: () => void;
   onStatusUpdate: (issueId: string, newStatus: string) => void;
+  onPriorityUpdate: (issueId: string, newPriority: string) => void;
 }
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -74,7 +75,7 @@ function fmtTime(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-export default function IssueDetailModal({ issue, onClose, onStatusUpdate }: IssueDetailModalProps) {
+export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPriorityUpdate }: IssueDetailModalProps) {
   const { isDark } = useTheme();
 
   const [comments, setComments]             = useState<Comment[]>([]);
@@ -84,7 +85,8 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate }: Iss
   const [commentError, setCommentError]     = useState('');
   const [status, setStatus] = useState(issue.status);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-
+  const [priority, setPriority] = useState(issue.priority);
+  const [updatingPriority, setUpdatingPriority] = useState(false);
 
 
   const chatEndRef  = useRef<HTMLDivElement>(null);
@@ -136,6 +138,19 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate }: Iss
   }
 };
 
+  const handlePriorityChange = async (newPriority: string) => {
+  if (newPriority === priority || updatingPriority) return;
+  setUpdatingPriority(true);
+  try {
+    await issuesAPI.updateIssue(issue.id, { priority: newPriority });
+    setPriority(newPriority);
+    onPriorityUpdate(issue.id, newPriority);
+  } catch (err) {
+    console.error('Failed to update priority:', err);
+  } finally {
+    setUpdatingPriority(false);
+  }
+};
 
   const handleSend = async () => {
     const trimmed = newComment.trim();
@@ -310,6 +325,36 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate }: Iss
                     } disabled:cursor-not-allowed`}
                   >
                     {updatingStatus && isActive ? 'Saving…' : option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+            {/* Priority selector */}
+          <div className="mb-5">
+            <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
+              Update Priority
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'low',      label: 'Low',      color: 'border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10' },
+                { value: 'medium',   label: 'Medium',   color: 'border-cyan-500/30 text-cyan-500 hover:bg-cyan-500/10' },
+                { value: 'high',     label: 'High',     color: 'border-amber-500/30 text-amber-500 hover:bg-amber-500/10' },
+                { value: 'critical', label: 'Critical', color: 'border-red-500/30 text-red-400 hover:bg-red-500/10' },
+              ].map((option) => {
+                const isActive = priority === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handlePriorityChange(option.value)}
+                    disabled={updatingPriority}
+                    className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${option.color} ${
+                      isActive
+                        ? 'opacity-100 ring-2 ring-offset-1 ' + (isDark ? 'ring-offset-[#0d1420]' : 'ring-offset-white') + ' ring-current'
+                        : 'opacity-50 hover:opacity-100'
+                    } disabled:cursor-not-allowed`}
+                  >
+                    {updatingPriority && isActive ? 'Saving…' : option.label}
                   </button>
                 );
               })}

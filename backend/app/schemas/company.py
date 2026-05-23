@@ -4,6 +4,15 @@ from uuid import UUID
 from typing import Optional
 
 
+class CompanyBrief(BaseModel):
+    id: UUID
+    name: str
+    company_type: str
+
+    class Config:
+        from_attributes = True
+
+
 class CompanyCreate(BaseModel):
     name: str
     company_type: str  # "plant" or "contractor"
