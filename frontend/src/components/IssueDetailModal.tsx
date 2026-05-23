@@ -552,16 +552,16 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
                         }`}
                       >
                         {isImage ? (
-                          <a href={`http://localhost:8000${att.url}`} target="_blank" rel="noopener noreferrer">
+                          <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${att.url}`} target="_blank" rel="noopener noreferrer">
                             <img
-                              src={`http://localhost:8000${att.url}`}
+                              src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${att.url}`}
                               alt={att.filename}
                               className="w-full h-24 object-cover"
                             />
                           </a>
                         ) : (
                           <a
-                            href={`http://localhost:8000${att.url}`}
+                            href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${att.url}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-center h-24"

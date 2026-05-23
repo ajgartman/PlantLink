@@ -139,7 +139,8 @@ export default function Reports() {
   const handleExportCSV = () => {
     const token = localStorage.getItem('token');
     // Use fetch + blob so we can attach the auth header
-    fetch('http://localhost:8000/issues/export', {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    fetch(`${apiUrl}/issues/export`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.blob())

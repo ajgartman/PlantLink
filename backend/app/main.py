@@ -4,8 +4,14 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from fastapi.staticfiles import StaticFiles
 import os
+import sentry_sdk
 from app.routers import auth, companies, projects, issues, users, comments, attachments, invites
 from app.limiter import limiter
+
+# Sentry monitoring — only active when SENTRY_DSN is set
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(dsn=sentry_dsn, traces_sample_rate=0.1)
 
 app = FastAPI(
     title="Issue Tracker API",
@@ -15,9 +21,10 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
