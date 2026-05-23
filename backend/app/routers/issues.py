@@ -1,4 +1,7 @@
+import csv
+import io
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from typing import List, Optional
@@ -123,6 +126,48 @@ def get_recent_history(
             )
         )
     return query.order_by(IssueHistory.created_at.desc()).limit(min(limit, 50)).all()
+
+
+@router.get("/export")
+def export_issues(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export issues as CSV (filtered to user's company)."""
+    query = (
+        db.query(Issue)
+        .join(Project, Issue.project_id == Project.id)
+        .options(joinedload(Issue.created_by), joinedload(Issue.assigned_to))
+    )
+    if current_user.company_id:
+        query = query.filter(
+            or_(
+                Project.plant_id == current_user.company_id,
+                Project.contractor_id == current_user.company_id,
+            )
+        )
+    issues = query.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Title", "Status", "Priority", "Location", "Assigned To", "Created By", "Created At", "Resolved At"])
+    for issue in issues:
+        writer.writerow([
+            issue.title,
+            issue.status,
+            issue.priority,
+            issue.location or "",
+            issue.assigned_to.full_name if issue.assigned_to else "",
+            issue.created_by.full_name if issue.created_by else "",
+            str(issue.created_at) if issue.created_at else "",
+            str(issue.resolved_at) if issue.resolved_at else "",
+        ])
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=issues.csv"},
+    )
 
 
 @router.get("/{issue_id}", response_model=IssueResponse)

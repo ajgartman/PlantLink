@@ -8,6 +8,7 @@ import Contractors from './pages/Contractors';
 import Projects from './pages/Projects';
 import Onboarding from './pages/Onboarding';
 import InviteAccept from './pages/InviteAccept';
+import Reports from './pages/Reports';
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -43,7 +44,7 @@ function App() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/issues"      element={<PlaceholderPage title="Issues" />} />
         <Route path="/plant-map"   element={<PlaceholderPage title="Plant Map" />} />
-        <Route path="/reports"     element={<PlaceholderPage title="Reports" />} />
+        <Route path="/reports"     element={<Reports />} />
         <Route path="/files"       element={<PlaceholderPage title="Files" />} />
         <Route path="/chat"        element={<PlaceholderPage title="Chat" />} />
         <Route path="/settings"    element={<PlaceholderPage title="Settings" />} />
