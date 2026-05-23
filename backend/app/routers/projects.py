@@ -6,12 +6,13 @@ from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from app.security import get_current_user
+from app.dependencies import require_role
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def create_project(project_data: ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_project(project_data: ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role("admin", "manager"))):
     """Create a new project linking a contractor to a plant"""
     new_project = Project(
         name=project_data.name,
@@ -74,7 +75,7 @@ def update_project(project_id: str, project_data: ProjectUpdate, db: Session = D
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_project(project_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_role("admin"))):
     """Delete a project"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:

@@ -10,16 +10,17 @@ interface SidebarProps {
   issuesCount?: number;
 }
 
+// minRole: minimum roles that can see this item (empty = everyone)
 const navItems = [
-  { id: 'Dashboard',   icon: '▦', label: 'Dashboard',   section: 'main',   path: '/dashboard'   },
-  { id: 'Issues',      icon: '◫', label: 'Issues',      section: 'main',   path: '/issues'      },
-  { id: 'Plant Map',   icon: '⬡', label: 'Plant Map',   section: 'main',   path: '/plant-map'   },
-  { id: 'Contractors', icon: '◈', label: 'Contractors', section: 'manage', path: '/contractors' },
-  { id: 'Projects',    icon: '⬗', label: 'Projects',    section: 'manage', path: '/projects'    },
-  { id: 'Reports',     icon: '⬗', label: 'Reports',     section: 'manage', path: '/reports'     },
-  { id: 'Files',       icon: '⬚', label: 'Files',       section: 'other',  path: '/files'       },
-  { id: 'Chat',        icon: '◻', label: 'Chat',        section: 'other',  path: '/chat'        },
-  { id: 'Settings',    icon: '◎', label: 'Settings',    section: 'other',  path: '/settings'    },
+  { id: 'Dashboard',   icon: '▦', label: 'Dashboard',   section: 'main',   path: '/dashboard',   roles: [] as string[] },
+  { id: 'Issues',      icon: '◫', label: 'Issues',      section: 'main',   path: '/issues',      roles: [] as string[] },
+  { id: 'Plant Map',   icon: '⬡', label: 'Plant Map',   section: 'main',   path: '/plant-map',   roles: [] as string[] },
+  { id: 'Contractors', icon: '◈', label: 'Contractors', section: 'manage', path: '/contractors', roles: ['admin', 'manager', 'operator'] },
+  { id: 'Projects',    icon: '⬗', label: 'Projects',    section: 'manage', path: '/projects',    roles: ['admin', 'manager', 'operator'] },
+  { id: 'Reports',     icon: '⬗', label: 'Reports',     section: 'manage', path: '/reports',     roles: ['admin', 'manager'] },
+  { id: 'Files',       icon: '⬚', label: 'Files',       section: 'other',  path: '/files',       roles: [] as string[] },
+  { id: 'Chat',        icon: '◻', label: 'Chat',        section: 'other',  path: '/chat',        roles: [] as string[] },
+  { id: 'Settings',    icon: '◎', label: 'Settings',    section: 'other',  path: '/settings',    roles: ['admin', 'manager'] },
 ];
 
 export default function Sidebar({ user, isSidebarOpen, setIsSidebarOpen, issuesCount = 0 }: SidebarProps) {
@@ -130,7 +131,11 @@ export default function Sidebar({ user, isSidebarOpen, setIsSidebarOpen, issuesC
       <nav className="flex-1 py-4 overflow-y-auto px-3 space-y-5">
         {(['main', 'manage', 'other'] as const).map((section) => {
           const labels: Record<string, string> = { main: 'Main', manage: 'Management', other: 'Other' };
-          const items = navItems.filter((n) => n.section === section);
+          // Filter by section AND role visibility
+          const items = navItems.filter(
+            (n) => n.section === section && (n.roles.length === 0 || n.roles.includes(user.role))
+          );
+          if (items.length === 0) return null;
           return (
             <div key={section}>
               <div className={`px-3 mb-2 text-[9px] font-semibold uppercase tracking-widest ${t.navSectionLabel}`}>

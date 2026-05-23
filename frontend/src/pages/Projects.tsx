@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { projectsAPI, companiesAPI } from '../services/api';
 import NewProjectModal from '../components/NewProjectModal';
+import type { User } from '../types/user';
 
 interface Company {
   id: string;
@@ -30,6 +32,8 @@ interface Project {
 
 export default function Projects() {
   const { isDark } = useTheme();
+  const { user } = useOutletContext<{ user: User }>();
+  const canManage = ['admin', 'manager'].includes(user.role);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -103,13 +107,15 @@ export default function Projects() {
             </h1>
             <div className={`text-[10px] mt-0.5 tracking-wide ${t.breadcrumb}`}>HOME › MANAGEMENT › PROJECTS</div>
           </div>
-          <button
-            onClick={() => setShowNewModal(true)}
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl text-sm font-semibold transition-all flex items-center gap-2 glow-cyan"
-          >
-            <span className="text-xs">+</span>
-            <span className="hidden sm:inline">New Project</span>
-          </button>
+          {canManage && (
+            <button
+              onClick={() => setShowNewModal(true)}
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl text-sm font-semibold transition-all flex items-center gap-2 glow-cyan"
+            >
+              <span className="text-xs">+</span>
+              <span className="hidden sm:inline">New Project</span>
+            </button>
+          )}
         </div>
       </div>
 

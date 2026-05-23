@@ -37,20 +37,18 @@ api.interceptors.response.use(
   }
 );
 
-// Authentication API calls
 export const authAPI = {
-  register: async (
-    email: string,
-    password: string,
-    fullName: string,
-    companyName?: string
-  ) => {
-    const response = await api.post('/auth/register', {
-      email,
-      password,
-      full_name: fullName,
-      company_name: companyName,
-    });
+  register: async (data: {
+    email: string;
+    password: string;
+    full_name: string;
+    company_name: string;
+    company_type?: string;
+    company_email?: string;
+    company_phone?: string;
+    company_address?: string;
+  }) => {
+    const response = await api.post('/auth/register', data);
     return response.data;
   },
 
@@ -63,10 +61,16 @@ export const authAPI = {
   },
 };
 
-// 🆕 User API calls
 export const userAPI = {
   getCurrentUser: async () => {
     const response = await api.get('/users/me');
+    return response.data;
+  },
+};
+
+export const usersAPI = {
+  getAllUsers: async () => {
+    const response = await api.get('/users/');
     return response.data;
   },
 };
@@ -90,6 +94,11 @@ export const issuesAPI = {
 
   updateIssue: async (issueId: string, data: Record<string, any>) => {
     const response = await api.put(`/issues/${issueId}`, data);
+    return response.data;
+  },
+
+  getIssueHistory: async (issueId: string) => {
+    const response = await api.get(`/issues/${issueId}/history`);
     return response.data;
   },
 

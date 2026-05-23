@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 
 function Login() {
@@ -151,9 +151,9 @@ function Login() {
 
             <div className="text-center text-gray-600 text-sm">
               Don't have an account?{' '}
-              <a href="#" className="text-blue-500 font-semibold hover:text-blue-700 transition">
-                Request Demo
-              </a>
+              <Link to="/register" className="text-blue-500 font-semibold hover:text-blue-700 transition">
+                Sign up
+              </Link>
             </div>
 
           </div>

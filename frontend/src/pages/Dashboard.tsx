@@ -10,7 +10,7 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { issuesAPI } from '../services/api';
 import type { User } from '../types/user';
@@ -21,8 +21,8 @@ import NewIssueModal from '../components/NewIssueModal';
 function Dashboard() {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
+  const { user } = useOutletContext<{ user: User }>();
 
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [issues, setIssues] = useState<any[]>([]);
@@ -34,16 +34,8 @@ function Dashboard() {
   const [totalIssues, setTotalIssues] = useState(0);
   const pageSize = 50;
 
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      navigate('/login');
-    }
-    setLoading(false);
-  }, []);
+  // Role-based UI: who can create issues
+  const canCreateIssue = ['admin', 'manager', 'operator'].includes(user.role);
 
   const fetchIssues = async (params?: Record<string, string | number>) => {
     try {
@@ -102,6 +94,14 @@ function Dashboard() {
     )
   );
 };
+
+  const handleAssigneeUpdate = (issueId: string, assignee: any) => {
+    setIssues((prev) =>
+      prev.map((issue) =>
+        issue.id === issueId ? { ...issue, assigned_to: assignee } : issue
+      )
+    );
+  };
 
   // ── Priority & Status config (same for both themes — colours are semantic) ──
   const priorityConfig: Record<string, { color: string; bg: string; bar: string; dot: string }> = {
@@ -364,15 +364,6 @@ function Dashboard() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-[#0a0f1a]' : 'bg-slate-50'}`}>
-        <button onClick={() => navigate('/login')} className="text-cyan-500 hover:text-cyan-400 text-sm">
-          Return to Login
-        </button>
-      </div>
-    );
-  }
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
@@ -421,14 +412,16 @@ function Dashboard() {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full badge-dot border-2 ${isDark ? 'border-[#080c14]' : 'border-white'}"></span>
               </button>
 
-              {/* New Issue */}
-              <button
-                onClick={handleNewIssue}
-                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl text-sm font-semibold transition-all flex items-center gap-2 glow-cyan"
-              >
-                <span className="text-xs">+</span>
-                <span className="hidden sm:inline">New Issue</span>
-              </button>
+              {/* New Issue — only for admin / manager / operator */}
+              {canCreateIssue && (
+                <button
+                  onClick={handleNewIssue}
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl text-sm font-semibold transition-all flex items-center gap-2 glow-cyan"
+                >
+                  <span className="text-xs">+</span>
+                  <span className="hidden sm:inline">New Issue</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -588,10 +581,10 @@ function Dashboard() {
                 </div>
                 <div className="p-4 space-y-2">
                   {[
-                    { icon: '+', label: 'New Issue',          desc: 'Report a problem',     color: 'text-cyan-500',    bg: 'bg-cyan-500/10 border-cyan-500/20' },
-                    { icon: '◈', label: 'Assign Contractor',  desc: 'Manage assignments',   color: 'text-violet-500',  bg: 'bg-violet-500/10 border-violet-500/20' },
+                    canCreateIssue && { icon: '+', label: 'New Issue',          desc: 'Report a problem',     color: 'text-cyan-500',    bg: 'bg-cyan-500/10 border-cyan-500/20' },
+                    ['admin', 'manager'].includes(user.role) && { icon: '◈', label: 'Assign Contractor',  desc: 'Manage assignments',   color: 'text-violet-500',  bg: 'bg-violet-500/10 border-violet-500/20' },
                     { icon: '⬗', label: 'Generate Report',   desc: 'Performance analytics', color: 'text-amber-500',  bg: 'bg-amber-500/10 border-amber-500/20' },
-                  ].map((action, i) => (
+                  ].filter(Boolean).map((action, i) => (
                     <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all group ${t.actionItemBg}`}>
                       <div className={`w-9 h-9 rounded-xl ${action.bg} border flex items-center justify-center flex-shrink-0`}>
                         <span className={`text-sm ${action.color}`}>{action.icon}</span>
@@ -671,6 +664,7 @@ function Dashboard() {
           onClose={() => setSelectedIssue(null)}
           onStatusUpdate={handleIssueStatusUpdate}
           onPriorityUpdate={handleIssuePriorityUpdate}
+          onAssigneeUpdate={handleAssigneeUpdate}
         />
       )}
         {showNewIssueModal && (

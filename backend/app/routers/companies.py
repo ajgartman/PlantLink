@@ -6,12 +6,13 @@ from app.models.company import Company
 from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyResponse
 from app.security import get_current_user
+from app.dependencies import require_role
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
 
 @router.post("/", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
-def create_company(company_data: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_company(company_data: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role("admin", "manager"))):
     """Create a new company (plant or contractor)"""
     new_company = Company(
         name=company_data.name,

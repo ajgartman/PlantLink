@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout';
 import Contractors from './pages/Contractors';
 import Projects from './pages/Projects';
+import Onboarding from './pages/Onboarding';
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -24,6 +25,7 @@ function App() {
     <Routes>
       {/* Public routes — no layout, no auth */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Onboarding />} />
 
       {/* Protected routes — wrapped in auth + shared layout */}
       <Route

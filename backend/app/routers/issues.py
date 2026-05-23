@@ -4,8 +4,11 @@ from sqlalchemy import or_
 from typing import List, Optional
 from app.database import get_db
 from app.models.issue import Issue
+from app.models.issue_history import IssueHistory
 from app.schemas.issue import IssueCreate, IssueUpdate, IssueResponse
+from app.schemas.issue_history import IssueHistoryResponse
 from app.security import get_current_user
+from app.dependencies import require_role
 from app.models.user import User
 
 
@@ -17,7 +20,7 @@ router = APIRouter(prefix="/issues", tags=["Issues"])
 def create_issue(
         issue_data: IssueCreate,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(require_role("admin", "manager", "operator")),
 ):
     """Create a new issue (requires authentication)"""
     new_issue = Issue(
@@ -82,11 +85,30 @@ def get_issue(issue_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{issue_id}", response_model=IssueResponse)
-def update_issue(issue_id: str, issue_data: IssueUpdate, db: Session = Depends(get_db)):
-    """Update an issue"""
+def update_issue(
+    issue_id: str,
+    issue_data: IssueUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
+
+    # Track history for key fields
+    for field in ["status", "priority", "assigned_to_id"]:
+        new_val = getattr(issue_data, field, None)
+        if new_val is not None:
+            old_val = getattr(issue, field)
+            if str(old_val) != str(new_val):
+                history = IssueHistory(
+                    issue_id=issue.id,
+                    user_id=current_user.id,
+                    field_changed=field,
+                    old_value=str(old_val) if old_val else None,
+                    new_value=str(new_val),
+                )
+                db.add(history)
 
     # Update only provided fields
     if issue_data.title is not None:
@@ -110,6 +132,17 @@ def update_issue(issue_id: str, issue_data: IssueUpdate, db: Session = Depends(g
     db.refresh(issue)
 
     return issue
+
+
+@router.get("/{issue_id}/history", response_model=List[IssueHistoryResponse])
+def get_issue_history(issue_id: str, db: Session = Depends(get_db)):
+    return (
+        db.query(IssueHistory)
+        .filter(IssueHistory.issue_id == issue_id)
+        .options(joinedload(IssueHistory.user))
+        .order_by(IssueHistory.created_at.asc())
+        .all()
+    )
 
 
 @router.delete("/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)

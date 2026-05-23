@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { commentsAPI, issuesAPI } from '../services/api';
+import { commentsAPI, issuesAPI, usersAPI } from '../services/api';
+
+interface HistoryEntry {
+  id: string;
+  field_changed: string;
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
+  user: { full_name: string; email: string } | null;
+}
 
 interface IssueAuthor {
   full_name: string;
@@ -40,6 +49,7 @@ interface IssueDetailModalProps {
   onClose: () => void;
   onStatusUpdate: (issueId: string, newStatus: string) => void;
   onPriorityUpdate: (issueId: string, newPriority: string) => void;
+  onAssigneeUpdate?: (issueId: string, assignee: any) => void;
 }
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -75,7 +85,7 @@ function fmtTime(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPriorityUpdate }: IssueDetailModalProps) {
+export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPriorityUpdate, onAssigneeUpdate }: IssueDetailModalProps) {
   const { isDark } = useTheme();
 
   const [comments, setComments]             = useState<Comment[]>([]);
@@ -87,6 +97,10 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [priority, setPriority] = useState(issue.priority);
   const [updatingPriority, setUpdatingPriority] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [assignedToId, setAssignedToId] = useState(issue.assigned_to_id || '');
+  const [updatingAssignee, setUpdatingAssignee] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
 
   const chatEndRef  = useRef<HTMLDivElement>(null);
@@ -100,10 +114,16 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
     const load = async () => {
       try {
         setLoadingComments(true);
-        const data = await commentsAPI.getComments(issue.id);
-        if (!cancelled) setComments(data);
+        const [commentsData, historyData] = await Promise.all([
+          commentsAPI.getComments(issue.id),
+          issuesAPI.getIssueHistory(issue.id),
+        ]);
+        if (!cancelled) {
+          setComments(commentsData);
+          setHistory(historyData);
+        }
       } catch (err) {
-        console.error('Failed to load comments:', err);
+        console.error('Failed to load comments/history:', err);
       } finally {
         if (!cancelled) setLoadingComments(false);
       }
@@ -111,6 +131,44 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
     load();
     return () => { cancelled = true; };
   }, [issue.id]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await usersAPI.getAllUsers();
+        setUsers(data);
+      } catch (err) {
+        console.error('Failed to load users:', err);
+      }
+    };
+    loadUsers();
+  }, []);
+
+  const handleAssigneeChange = async (userId: string) => {
+    if (updatingAssignee) return;
+    setUpdatingAssignee(true);
+    try {
+      const updateData: Record<string, any> = { assigned_to_id: userId || undefined };
+      // Auto-update status to assigned if issue is new
+      if (userId && status === 'new') {
+        updateData.status = 'assigned';
+      }
+      await issuesAPI.updateIssue(issue.id, updateData);
+      setAssignedToId(userId);
+      const assignedUser = users.find((u) => u.id === userId);
+      if (onAssigneeUpdate) {
+        onAssigneeUpdate(issue.id, assignedUser ? { id: assignedUser.id, full_name: assignedUser.full_name, email: assignedUser.email } : null);
+      }
+      if (userId && status === 'new') {
+        setStatus('assigned');
+        onStatusUpdate(issue.id, 'assigned');
+      }
+    } catch (err) {
+      console.error('Failed to update assignee:', err);
+    } finally {
+      setUpdatingAssignee(false);
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -360,6 +418,28 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
               })}
             </div>
           </div>
+            {/* Assign To */}
+            <div className="mb-5">
+              <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
+                Assign To
+              </div>
+              <select
+                value={assignedToId}
+                onChange={(e) => handleAssigneeChange(e.target.value)}
+                disabled={updatingAssignee}
+                className={`w-full px-3 py-2.5 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-1 ${
+                  isDark
+                    ? 'bg-white/[0.04] border-white/[0.08] text-slate-200 focus:border-cyan-500/50 focus:ring-cyan-500/20'
+                    : 'bg-white border-slate-200 text-slate-800 focus:border-cyan-400 focus:ring-cyan-400/20'
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                <option value="">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+                ))}
+              </select>
+            </div>
+
             {/* Description */}
             <div className="mb-5">
               <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
@@ -373,6 +453,38 @@ export default function IssueDetailModal({ issue, onClose, onStatusUpdate, onPri
                 )}
               </div>
             </div>
+
+            {/* History timeline */}
+            {history.length > 0 && (
+              <div className="mb-5">
+                <div className={`text-[9px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>
+                  Activity Log
+                </div>
+                <div className={`rounded-xl border p-3 space-y-2.5 ${t.metaGrid}`}>
+                  {history.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-2.5">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                        entry.field_changed === 'status' ? 'bg-cyan-500' :
+                        entry.field_changed === 'priority' ? 'bg-amber-500' : 'bg-violet-500'
+                      }`}></div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-xs leading-snug ${t.metaValue}`}>
+                          <span className="font-medium">{entry.user?.full_name || 'Unknown'}</span>
+                          {' changed '}
+                          <span className="font-medium">{entry.field_changed.replace('_', ' ')}</span>
+                          {entry.old_value && (
+                            <> from <span className="font-mono text-[10px]">{entry.old_value}</span></>
+                          )}
+                          {' to '}
+                          <span className="font-mono text-[10px]">{entry.new_value}</span>
+                        </div>
+                        <div className={`text-[10px] mt-0.5 ${t.metaLabel}`}>{fmtTime(entry.created_at)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Resolved badge */}
             {issue.resolved_at && (
